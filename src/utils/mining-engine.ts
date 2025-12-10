@@ -36,7 +36,7 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
 
         const pcCnt = parseCnt(item.monthlyPcQcCnt);
         const moCnt = parseCnt(item.monthlyMobileQcCnt);
-        const total = pcCnt + moCnt;
+        const total = Math.round(pcCnt + moCnt);
 
         return {
             keyword: item.relKeyword.replace(/\s+/g, ''),
@@ -44,9 +44,9 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
             pc_search_cnt: pcCnt,
             mo_search_cnt: moCnt,
             total_search_cnt: total,
-            click_cnt: parseCnt(item.monthlyAvePcClkCnt) + parseCnt(item.monthlyAveMobileClkCnt),
+            click_cnt: Math.round(parseCnt(item.monthlyAvePcClkCnt) + parseCnt(item.monthlyAveMobileClkCnt)),
             comp_idx: item.compIdx,
-            pl_avg_depth: parseCnt(item.plAvgDepth)
+            pl_avg_depth: Math.round(parseCnt(item.plAvgDepth))
         };
     });
 
