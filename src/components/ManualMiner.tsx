@@ -34,10 +34,18 @@ export default function ManualMiner() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Mining failed');
 
+            // Check if individual results have errors
+            const failedResults = data.results.filter((r: any) => !r.success);
+            if (failedResults.length > 0) {
+                const firstError = failedResults[0].error;
+                throw new Error(`Partial Failure: ${firstError}`);
+            }
+
             const allItems = data.results.flatMap((r: any) => r.data || []);
             setResults(allItems);
 
         } catch (e: any) {
+            console.error("Mining Error:", e);
             setError(e.message);
         } finally {
             setLoading(false);
