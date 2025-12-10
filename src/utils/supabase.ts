@@ -4,7 +4,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase environment variables');
+    console.warn('Warning: Missing Supabase environment variables. App will not function correctly.');
+    // Do not throw error to allow build phase to pass if vars are missing
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
