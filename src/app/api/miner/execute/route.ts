@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
             .from('keywords')
             .select('*')
             .is('total_doc_cnt', null)
-            .limit(10); // Process 10 at a time to stay within 60s
+            .limit(20); // Process 20 at a time (approx 10-15s)
 
         if (missingError) throw missingError;
 
