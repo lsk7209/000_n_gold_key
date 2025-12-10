@@ -40,3 +40,11 @@
 - [x] **Security Hardening**: `robots.txt` and meta tags to block crawlers (Private Mode).
 - [x] **Navigation & Layout**: Added Navbar, Footer, and dedicated sub-pages (About, Contact, Data).
 - [x] **Refactoring**: Extracted core logic to `utils/mining-engine.ts` for reusability.
+
+## 8. Optimization & Automation (Current Phase)
+- [x] **Parallel API Key Management**: Implemented `KeyManager` to utilize 13 keys (4 Ad, 9 Search) simultaneously.
+- [x] **Robust Retry Logic**: Added multi-key retry mechanisms for both Ad and Search APIs.
+- [x] **Batch Runner Utility**: Created `batch-runner.ts` to coordinate `FILL_DOCS` and `EXPAND` modes efficiently.
+- [x] **Manual Batch Trigger**: Added server action and UI button for on-demand batch execution with detailed feedback.
+- [x] **Throughput Optimization**: Increased batch limits (50 items) and prioritized processing by high search volume.
+
