@@ -13,56 +13,28 @@ export default function ManualMiner() {
     // System Trigger State
     const [sysLoading, setSysLoading] = useState(false);
     const [sysMsg, setSysMsg] = useState('');
-
-    const handleMining = async () => {
-        if (!input.trim()) return;
-
-        setLoading(true);
-        setError('');
-        setResults([]);
-
-        const keywords = input.split(',').map(k => k.trim()).filter(Boolean);
-        if (keywords.length > 5) {
-            setError('키워드는 최대 5개까지 입력 가능합니다.');
-            setLoading(false);
-            return;
-        }
-
-        try {
-            const res = await fetch('/api/miner/manual', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ keywords })
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Mining failed');
-
-            // Check if individual results have errors
-            const failedResults = data.results.filter((r: any) => !r.success);
-            if (failedResults.length > 0) {
-                const firstError = failedResults[0].error;
-                throw new Error(`Partial Failure: ${firstError}`);
-            }
-
-            const allItems = data.results.flatMap((r: any) => r.data || []);
-            setResults(allItems);
-
-        } catch (e: any) {
-            console.error("Mining Error:", e);
-            setError(e.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const [sysErrors, setSysErrors] = useState<string[]>([]);
 
     const handleBatchTrigger = async () => {
         setSysLoading(true);
         setSysMsg('');
+        setSysErrors([]);
         try {
             const res: any = await triggerMining();
             if (res.success) {
-                setSysMsg(`✅ 봇 실행 완료: ${res.mode}모드 (${res.processed}개 처리됨)`);
+                let msg = `✅ 봇 실행 완료: ${res.mode}`;
+                if (res.mode === 'FILL_DOCS') {
+                    msg += ` (성공: ${res.processed}, 실패: ${res.failed || 0})`;
+                } else if (res.mode === 'EXPAND') {
+                    msg += ` (Seed: ${res.seed}, 저장: ${res.saved})`;
+                } else {
+                    msg += ` (${res.message})`;
+                }
+                setSysMsg(msg);
+
+                if (res.errors && res.errors.length > 0) {
+                    setSysErrors(res.errors);
+                }
             } else {
                 setSysMsg(`❌ 실행 실패: ${res.error || '알 수 없는 오류'}`);
             }
@@ -120,11 +92,20 @@ export default function ManualMiner() {
                         </span>
                     </div>
 
-                    {sysMsg && (
-                        <div className="text-sm text-blue-600 font-medium px-1 text-right">
-                            {sysMsg}
-                        </div>
-                    )}
+                    <div className="flex flex-col items-end gap-1">
+                        {sysMsg && (
+                            <div className={`text-sm font-medium px-1 ${sysMsg.startsWith('❌') ? 'text-red-600' : 'text-blue-600'}`}>
+                                {sysMsg}
+                            </div>
+                        )}
+                        {sysErrors.length > 0 && (
+                            <div className="text-xs text-red-500 bg-red-50 p-2 rounded max-w-md text-right">
+                                <div className="font-bold mb-1">다음 에러로 일부 실패:</div>
+                                {sysErrors.map((e, i) => <div key={i}>• {e}</div>)}
+                                <div className="mt-1 text-zinc-400">Vercel 환경변수(API키)를 확인해주세요.</div>
+                            </div>
+                        )}
+                    </div>
 
                     <div className="max-h-96 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded-lg">
                         <table className="w-full text-sm text-left">

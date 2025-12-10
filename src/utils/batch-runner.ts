@@ -25,10 +25,10 @@ export async function runMiningBatch() {
         if (missingDocs && missingDocs.length > 0) {
             log(`[Batch] Mode: FILL_DOCS (${missingDocs.length} items)`);
             const results: string[] = [];
+            let failedCount = 0;
+            const errors: string[] = [];
 
             // Parallel Process
-            // Limit concurrency if needed, but 20 is fine for 9 keys?
-            // Let's do batch of 5 to be safe with rate limits although we have retry logic.
             const BATCH_SIZE = 5;
             for (let i = 0; i < missingDocs.length; i += BATCH_SIZE) {
                 const chunk = missingDocs.slice(i, i + BATCH_SIZE);
@@ -64,10 +64,18 @@ export async function runMiningBatch() {
                             })
                             .eq('id', item.id);
 
-                        if (updateError) console.error('Update Error:', updateError);
-                        else results.push(item.keyword);
+                        if (updateError) {
+                            console.error('Update Error:', updateError);
+                            failedCount++;
+                            errors.push(`DB: ${updateError.message}`);
+                        } else {
+                            results.push(item.keyword);
+                        }
                     } catch (e: any) {
+                        const msg = e.message || 'Unknown';
                         console.error(`Doc fetch failed for ${item.keyword}:`, e);
+                        failedCount++;
+                        errors.push(`Key '${item.keyword}': ${msg}`);
                     }
                 }));
             }
@@ -76,6 +84,8 @@ export async function runMiningBatch() {
                 success: true,
                 mode: 'FILL_DOCS',
                 processed: results.length,
+                failed: failedCount,
+                errors: errors.slice(0, 5), // Return top 5 errors
                 items: results,
                 logs
             };
