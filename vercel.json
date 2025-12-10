@@ -1,8 +1,7 @@
 {
-    "crons": [
-        {
-            "path": "/api/miner/execute",
-            "schedule": "* * * * *"
+    "functions": {
+        "src/app/api/**/*": {
+            "maxDuration": 60
         }
-    ]
+    }
 }
