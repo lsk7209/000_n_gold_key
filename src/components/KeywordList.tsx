@@ -113,16 +113,16 @@ export default function KeywordList({ sort }: { sort: string }) {
                                         {post.total_search_cnt.toLocaleString()}
                                     </div>
                                     <div className="col-span-1 text-right tabular-nums text-zinc-400">
-                                        {post.blog_doc_cnt?.toLocaleString() || '-'}
+                                        {post.total_doc_cnt != null ? post.blog_doc_cnt.toLocaleString() : '-'}
                                     </div>
                                     <div className="col-span-1 text-right tabular-nums text-zinc-400">
-                                        {post.cafe_doc_cnt?.toLocaleString() || '-'}
+                                        {post.total_doc_cnt != null ? post.cafe_doc_cnt.toLocaleString() : '-'}
                                     </div>
                                     <div className="col-span-1 text-right tabular-nums text-zinc-400">
-                                        {post.web_doc_cnt?.toLocaleString() || '-'}
+                                        {post.total_doc_cnt != null ? post.web_doc_cnt.toLocaleString() : '-'}
                                     </div>
                                     <div className="col-span-1 text-right tabular-nums text-zinc-400">
-                                        {post.news_doc_cnt?.toLocaleString() || '-'}
+                                        {post.total_doc_cnt != null ? post.news_doc_cnt.toLocaleString() : '-'}
                                     </div>
                                     {/* Total Doc omitted or small? Let's show Ratio/Tier bigger */}
                                     <div className="col-span-1 text-right tabular-nums font-semibold text-emerald-600">
