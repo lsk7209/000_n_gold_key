@@ -53,8 +53,6 @@ export default function InsightPage() {
 
                 {/* Main List */}
                 <div className="space-y-4">
-
-
                     <KeywordList sort={sort} />
                 </div>
             </div>
