@@ -45,6 +45,47 @@ export default function ManualMiner() {
         }
     };
 
+    const handleMining = async () => {
+        if (!input.trim()) return;
+
+        setLoading(true);
+        setError('');
+        setResults([]);
+
+        try {
+            const keywords = input.split(',').map(s => s.trim()).filter(Boolean);
+            if (keywords.length === 0) return;
+
+            const res = await fetch('/api/miner/manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keywords })
+            });
+
+            const json = await res.json();
+
+            if (!res.ok) {
+                throw new Error(json.error || 'Request failed');
+            }
+
+            // Flatten results
+            const allItems = json.results
+                .filter((r: any) => r.success)
+                .flatMap((r: any) => r.data || []);
+
+            setResults(allItems);
+
+            if (allItems.length === 0) {
+                setError('결과가 없습니다.');
+            }
+
+        } catch (err: any) {
+            setError(err.message || '수집 중 오류 발생');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="w-full">
             <div className="flex gap-2">
