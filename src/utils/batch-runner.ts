@@ -12,10 +12,10 @@ export async function runMiningBatch() {
         // 1. FILL_DOCS Mode
         const { data: missingDocs, error: missingError } = await adminDb
             .from('keywords')
-            .select('*')
+            .select('id, keyword, total_search_cnt')
             .is('total_doc_cnt', null)
             .order('total_search_cnt', { ascending: false }) // Prioritize High Volume
-            .limit(50); // Increased limit for visibility
+            .limit(30); // Smaller batch to reduce load
 
         if (missingError) throw missingError;
 
@@ -25,9 +25,8 @@ export async function runMiningBatch() {
             let failedCount = 0;
             const errors: string[] = [];
 
-            // Parallel Process
-            // Increase Concurrency for speed (we have 9 keys)
-            const BATCH_SIZE = 10;
+            // Parallel Process with conservative concurrency (protect keys & DB)
+            const BATCH_SIZE = 4;
             for (let i = 0; i < missingDocs.length; i += BATCH_SIZE) {
                 const chunk = missingDocs.slice(i, i + BATCH_SIZE);
                 await Promise.all(chunk.map(async (item) => {
@@ -91,7 +90,7 @@ export async function runMiningBatch() {
         // 2. EXPAND Mode
         const { data: seeds, error: seedError } = await adminDb
             .from('keywords')
-            .select('*')
+            .select('id, keyword, total_search_cnt')
             .eq('is_expanded', false)
             .gte('total_search_cnt', 1000)
             .order('total_search_cnt', { ascending: false })
@@ -124,7 +123,7 @@ export async function runMiningBatch() {
 
         let result;
         try {
-            result = await processSeedKeyword(seed.keyword, 20); // 20 docs immediate
+            result = await processSeedKeyword(seed.keyword, 10); // Limit immediate doc fetch to reduce load
         } catch (e) {
             // Rollback the lock so the seed can be retried later
             await adminDb.from('keywords').update({ is_expanded: false }).eq('id', seed.id);
