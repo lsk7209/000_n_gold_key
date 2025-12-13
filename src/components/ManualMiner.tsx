@@ -17,6 +17,7 @@ export default function ManualMiner() {
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState<KeywordItem[]>([]);
     const [error, setError] = useState('');
+    const cronSecret = process.env.NEXT_PUBLIC_CRON_SECRET || '';
 
     const handleMining = async () => {
         if (!input.trim()) return;
@@ -26,10 +27,14 @@ export default function ManualMiner() {
         setResults([]);
 
         try {
+            if (!cronSecret) {
+                throw new Error('보안키(NEXT_PUBLIC_CRON_SECRET)가 설정되지 않았습니다.');
+            }
+
             const keywords = input.split(',').map(s => s.trim()).filter(Boolean);
             if (keywords.length === 0) return;
 
-            const res = await fetch('/api/miner/manual', {
+            const res = await fetch(`/api/miner/manual?key=${encodeURIComponent(cronSecret)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ keywords })
