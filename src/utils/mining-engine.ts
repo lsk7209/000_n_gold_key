@@ -105,8 +105,6 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
 
     // 6. Bulk Upsert (Processed)
     const rowsToInsert = processedResults.map((r: any) => {
-        // Golden Ratio Logic Update:
-        // Use (Blog + Cafe) count as the denominator (Competition).
         // Golden Ratio: 검색량 / (블로그 + 카페 + 웹 문서수)
         // 뉴스는 제외 (SEO 경쟁 지표로 부적합)
         const viewDocCnt = (r.blog || 0) + (r.cafe || 0) + (r.web || 0);
@@ -117,13 +115,21 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
         if (viewDocCnt > 0) {
             ratio = r.total_search_cnt / viewDocCnt;
 
-            if (ratio > 10) tier = 'PLATINUM';
-            else if (ratio > 5) tier = 'GOLD';
-            else if (ratio > 1) tier = 'SILVER';
-            else tier = 'BRONZE';
+            // 등급 산정 (문서수 기반 + Golden Ratio)
+            if (viewDocCnt <= 100 && ratio > 5) {
+                tier = 'DIAMOND';  // 초고효율: 문서 100개 이하 + 비율 5 이상
+            } else if (ratio > 10) {
+                tier = 'PLATINUM';
+            } else if (ratio > 5) {
+                tier = 'GOLD';
+            } else if (ratio > 1) {
+                tier = 'SILVER';
+            } else {
+                tier = 'BRONZE';
+            }
         } else if (r.total_search_cnt > 0 && r.total != null) {
-            // No view competition? Platinum.
-            tier = 'PLATINUM';
+            // No view competition? Diamond!
+            tier = 'DIAMOND';
             ratio = 99.99;
         }
 
