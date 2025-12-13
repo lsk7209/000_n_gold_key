@@ -11,6 +11,11 @@ jobs:
     steps:
       - name: Trigger Miner API
         run: |
+          if [ -z "${{ secrets.PROD_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "PROD_URL or CRON_SECRET is not set in GitHub Secrets."
+            exit 1
+          fi
           curl -X GET "${{ secrets.PROD_URL }}/api/miner/execute" \
-          -H "CRON_SECRET: ${{ secrets.CRON_SECRET }}" \
-          --max-time 70
+            -H "CRON_SECRET: ${{ secrets.CRON_SECRET }}" \
+            --fail \
+            --max-time 70
