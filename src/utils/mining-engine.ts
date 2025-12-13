@@ -34,9 +34,23 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
             return parseInt(String(val).replace(/,/g, '')) || 0;
         };
 
+        const parseFloat = (val: string | number) => {
+            if (typeof val === 'number') return val;
+            if (typeof val === 'string' && val.includes('<')) return 0.1;
+            return Number(String(val).replace(/,/g, '')) || 0;
+        };
+
         const pcCnt = parseCnt(item.monthlyPcQcCnt);
         const moCnt = parseCnt(item.monthlyMobileQcCnt);
         const total = Math.round(pcCnt + moCnt);
+
+        const pcClickCnt = parseCnt(item.monthlyAvePcClkCnt);
+        const moClickCnt = parseCnt(item.monthlyAveMobileClkCnt);
+        const totalClickCnt = Math.round(pcClickCnt + moClickCnt);
+
+        const pcCtr = parseFloat(item.monthlyAvePcCtr);
+        const moCtr = parseFloat(item.monthlyAveMobileCtr);
+        const totalCtr = (pcCtr + moCtr) / 2; // 평균 CTR
 
         return {
             keyword: item.relKeyword.replace(/\s+/g, ''),
@@ -44,7 +58,12 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
             pc_search_cnt: pcCnt,
             mo_search_cnt: moCnt,
             total_search_cnt: total,
-            click_cnt: Math.round(parseCnt(item.monthlyAvePcClkCnt) + parseCnt(item.monthlyAveMobileClkCnt)),
+            pc_click_cnt: pcClickCnt,
+            mo_click_cnt: moClickCnt,
+            click_cnt: totalClickCnt,
+            pc_ctr: pcCtr,
+            mo_ctr: moCtr,
+            total_ctr: totalCtr,
             comp_idx: item.compIdx,
             pl_avg_depth: Math.round(parseCnt(item.plAvgDepth))
         };
@@ -111,7 +130,12 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
             total_search_cnt: r.total_search_cnt,
             pc_search_cnt: r.pc_search_cnt,
             mo_search_cnt: r.mo_search_cnt,
+            pc_click_cnt: r.pc_click_cnt,
+            mo_click_cnt: r.mo_click_cnt,
             click_cnt: r.click_cnt,
+            pc_ctr: r.pc_ctr,
+            mo_ctr: r.mo_ctr,
+            total_ctr: r.total_ctr,
             comp_idx: r.comp_idx,
             pl_avg_depth: r.pl_avg_depth,
             total_doc_cnt: r.total, // keep showing total docs
@@ -132,7 +156,12 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
         total_search_cnt: r.total_search_cnt,
         pc_search_cnt: r.pc_search_cnt,
         mo_search_cnt: r.mo_search_cnt,
+        pc_click_cnt: r.pc_click_cnt,
+        mo_click_cnt: r.mo_click_cnt,
         click_cnt: r.click_cnt,
+        pc_ctr: r.pc_ctr,
+        mo_ctr: r.mo_ctr,
+        total_ctr: r.total_ctr,
         comp_idx: r.comp_idx,
         pl_avg_depth: r.pl_avg_depth,
         total_doc_cnt: null, // Defer
