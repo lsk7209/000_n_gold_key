@@ -18,6 +18,9 @@ export default function Footer() {
                     <Link href="/privacy" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
                         개인정보 처리방침
                     </Link>
+                    <Link href="/monitor" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+                        시스템 모니터링
+                    </Link>
                 </div>
             </div>
         </footer>
