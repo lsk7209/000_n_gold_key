@@ -80,26 +80,26 @@ export default function KeywordList({ sort }: { sort: string }) {
     if (status === 'pending') return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>;
     if (status === 'error') return <div className="p-10 text-red-500">데이터를 불러오는 중 오류가 발생했습니다</div>;
 
-    // Fixed widths for columns
+    // Fixed widths for columns - using fixed widths for strict alignment
     const colWidths = {
-        keyword: 'min-w-[180px] md:min-w-[220px]',
-        search: 'min-w-[80px]',
-        click: 'min-w-[80px]',
-        ctr: 'min-w-[70px]',
-        comp: 'min-w-[70px]',
-        doc: 'min-w-[60px]',
-        ratio: 'min-w-[70px]',
-        tier: 'min-w-[90px]',
+        keyword: 'w-[200px] md:w-[240px]',
+        search: 'w-[110px]',
+        click: 'w-[90px]',
+        ctr: 'w-[80px]',
+        comp: 'w-[80px]',
+        doc: 'w-[95px]',
+        ratio: 'w-[80px]',
+        tier: 'w-[100px]',
     };
 
     const HeaderCell = ({ label, width, align = 'right' }: any) => (
-        <div className={`${width} px-2 py-3 text-${align} font-semibold text-zinc-500 uppercase tracking-wider`}>
+        <div className={`${width} shrink-0 px-2 py-3 text-${align} font-semibold text-zinc-500 uppercase tracking-wider`}>
             {label}
         </div>
     );
 
     const DataCell = ({ value, width, align = 'right', className = '', title = '' }: any) => (
-        <div className={`${width} px-2 py-2 text-${align} tabular-nums text-zinc-600 dark:text-zinc-400 truncate ${className}`} title={title}>
+        <div className={`${width} shrink-0 px-2 py-2 text-${align} tabular-nums text-zinc-600 dark:text-zinc-400 truncate ${className}`} title={title}>
             {value}
         </div>
     );
@@ -108,7 +108,7 @@ export default function KeywordList({ sort }: { sort: string }) {
         <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col h-[calc(100vh-200px)]">
             {/* Scrollable Container for both Header and List */}
             <div className="flex-1 overflow-auto" ref={parentRef}>
-                <div className="min-w-[1600px]"> {/* Force horizontal availability */}
+                <div className="min-w-max"> {/* Force horizontal availability to fit all fixed columns */}
                     {/* Header */}
                     <div className="flex items-center bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 text-[10px] sm:text-xs sticky top-0 z-20">
                         <HeaderCell label="키워드" width={colWidths.keyword} align="left" />
