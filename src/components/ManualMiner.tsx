@@ -40,10 +40,18 @@ export default function ManualMiner() {
                 body: JSON.stringify({ keywords })
             });
 
-            const json = await res.json();
+            const raw = await res.text();
+            let json: any = {};
+            try {
+                json = raw ? JSON.parse(raw) : {};
+            } catch (err) {
+                // keep raw for debugging
+            }
 
             if (!res.ok) {
-                throw new Error(json.error || 'Request failed');
+                const detail = json?.error || raw || 'Request failed';
+                const hint = res.status === 401 ? ' (CRON_SECRET 확인)' : '';
+                throw new Error(`요청 실패 (${res.status})${hint}: ${detail}`);
             }
 
             // Flatten results
