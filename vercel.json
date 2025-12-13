@@ -3,11 +3,5 @@
         "src/app/api/**/*": {
             "maxDuration": 60
         }
-    },
-    "crons": [
-        {
-            "path": "/api/miner/execute",
-            "schedule": "*/30 * * * *"
-        }
-    ]
+    }
 }
