@@ -31,10 +31,10 @@ export default function MonitoringStatus() {
         <div className="relative">
             <button
                 onClick={() => setOpen(!open)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 rounded-md"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors border border-zinc-200 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 shadow-sm"
             >
-                <Activity className="w-4 h-4" />
-                <span>모니터링</span>
+                <Activity className="w-4 h-4 text-emerald-600" />
+                <span className="hidden sm:inline">모니터링</span>
             </button>
 
             {open && (
