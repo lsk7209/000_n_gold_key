@@ -45,6 +45,7 @@ export default async function MonitorPage() {
     let errorMsg = '';
     const adKeyStatus = keyManager.getStatusSummary('AD');
     const searchKeyStatus = keyManager.getStatusSummary('SEARCH');
+    let pendingDocs = 0;
 
     try {
         // Use Service Role Key if available, otherwise fallback to Anon Key
@@ -76,6 +77,7 @@ export default async function MonitorPage() {
         platinumCount = platinumCountResult || 0;
         goldCount = goldCountResult || 0;
         recentLogs = logs || [];
+        pendingDocs = Math.max(total - analyzed, 0);
 
     } catch (e: any) {
         console.error('Monitor Page Error:', e);
@@ -137,6 +139,13 @@ export default async function MonitorPage() {
                         desc="문서량 분석 완료"
                         progress={analysisProgress}
                         color="emerald"
+                    />
+                    <StatCard
+                        title="문서수 수집"
+                        value={`${analyzed.toLocaleString()} / ${pendingDocs.toLocaleString()}`}
+                        icon={<Search className="w-5 h-5" />}
+                        desc="완료 / 미완료"
+                        color="blue"
                     />
                     <StatCard
                         title="확장 완료"
