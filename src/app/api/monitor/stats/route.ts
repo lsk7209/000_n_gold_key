@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/utils/supabase';
+import { keyManager } from '@/utils/key-manager';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,18 +27,21 @@ export async function GET() {
         const { data: lastActive, error: e4 } = await db.from('keywords').select('updated_at').order('updated_at', { ascending: false }).limit(1).single();
         // Ignore e4 if no data, just return null date
 
-        // 5. API Keys Status (Simulate check)
-        // Since we can't persist state, we just count the configured keys from env
-        const envKeys = process.env.NAVER_API_KEYS || '';
-        const keyCount = envKeys.split(',').filter(k => k.includes(':')).length;
+        // 5. API Keys Status (based on in-memory cooldown tracking)
+        const adStatus = keyManager.getStatusSummary('AD');
+        const searchStatus = keyManager.getStatusSummary('SEARCH');
+        const systemHealthy = adStatus.available > 0 && searchStatus.available > 0;
 
         return NextResponse.json({
             total_keywords: total || 0,
             pending_docs: qDoc || 0,
             pending_seeds: qSeed || 0,
             last_activity: lastActive?.updated_at || null,
-            api_key_count: keyCount,
-            status: 'HEALTHY'
+            api_keys: {
+                ad: adStatus,
+                search: searchStatus
+            },
+            status: systemHealthy ? 'HEALTHY' : 'DEGRADED'
         });
 
     } catch (e: any) {

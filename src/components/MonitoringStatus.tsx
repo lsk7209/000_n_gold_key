@@ -88,13 +88,32 @@ export default function MonitoringStatus() {
 
                                 <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-2" />
 
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-zinc-500 flex items-center gap-2">
-                                        <Key className="w-3.5 h-3.5" /> API 키
-                                    </span>
-                                    <span className="font-mono font-bold text-emerald-600">
-                                        {stats.api_key_count} EA
-                                    </span>
+                                <div className="flex items-center gap-2 text-sm text-zinc-500">
+                                    <Key className="w-3.5 h-3.5" /> API 키 현황
+                                </div>
+                                <div className="text-xs space-y-2">
+                                    {['ad', 'search'].map((type) => {
+                                        const data = stats.api_keys?.[type];
+                                        const label = type === 'ad' ? 'AD 키' : 'SEARCH 키';
+                                        if (!data) return null;
+                                        const badgeColor = data.available > 0 ? 'text-emerald-600 bg-emerald-100' : 'text-orange-700 bg-orange-100';
+                                        const nextSec = data.nextReadyInMs ? Math.ceil(data.nextReadyInMs / 1000) : 0;
+                                        return (
+                                            <div key={type} className="flex items-center justify-between">
+                                                <span className="text-zinc-500">{label}</span>
+                                                <div className="flex items-center gap-2 font-mono">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${badgeColor}`}>
+                                                        {data.available}/{data.total} 사용가능
+                                                    </span>
+                                                    {data.cooling > 0 && (
+                                                        <span className="text-zinc-400">
+                                                            대기 {data.cooling} | ~{nextSec}s
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 <div className="text-xs text-right text-zinc-400 mt-2">

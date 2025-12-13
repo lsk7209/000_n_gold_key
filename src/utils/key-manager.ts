@@ -135,6 +135,24 @@ class KeyManager {
             console.warn(`Key ${keyId.substring(0, 5)}... marked for cooldown (429)`);
         }
     }
+
+    public getStatusSummary(type: KeyType) {
+        const keys = type === 'AD' ? this.adKeys : this.searchKeys;
+        const now = Date.now();
+        const total = keys.length;
+        const cooling = keys.filter(k => k.cooldownUntil > now).length;
+        const available = total - cooling;
+        const nextReadyInMs = cooling === 0
+            ? 0
+            : Math.max(0, Math.min(...keys.filter(k => k.cooldownUntil > now).map(k => k.cooldownUntil - now)));
+
+        return {
+            total,
+            available,
+            cooling,
+            nextReadyInMs
+        };
+    }
 }
 
 // Singleton instance for the duration of the serverless function execution
