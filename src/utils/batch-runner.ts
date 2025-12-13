@@ -5,90 +5,78 @@ import { fetchDocumentCount } from '@/utils/naver-api';
 
 export async function runMiningBatch() {
     const adminDb = getServiceSupabase();
-    // const logs: string[] = []; // Logs are handled effectively by Vercel logs
-
 
     try {
-        // 1. FILL_DOCS Mode
-        const { data: missingDocs, error: missingError } = await adminDb
+        const results: any = {
+            success: true,
+            fillDocs: null,
+            expand: null
+        };
+
+        // 🎯 전략: 한 번 실행에 두 작업 모두 수행
+        // 1. FILL_DOCS (소량 - 10개)
+        // 2. EXPAND (1개 시드)
+
+        // === STEP 1: FILL_DOCS (10개만 빠르게) ===
+        const { data: docsToFill, error: docsError } = await adminDb
             .from('keywords')
             .select('id, keyword, total_search_cnt')
             .is('total_doc_cnt', null)
-            .order('total_search_cnt', { ascending: false }) // Prioritize High Volume
-            .limit(40); // Slightly higher batch for throughput
+            .order('total_search_cnt', { ascending: false })
+            .limit(10);
 
-        if (missingError) throw missingError;
-
-        if (missingDocs && missingDocs.length > 0) {
-            console.log(`[Batch] Mode: FILL_DOCS (${missingDocs.length} items)`);
-            const results: string[] = [];
-            let failedCount = 0;
+        if (!docsError && docsToFill && docsToFill.length > 0) {
+            console.log(`[Batch] FILL_DOCS: Processing ${docsToFill.length} items`);
+            const processed: string[] = [];
             const errors: string[] = [];
 
-            // Parallel Process with conservative concurrency (protect keys & DB)
-            const BATCH_SIZE = 6;
-            for (let i = 0; i < missingDocs.length; i += BATCH_SIZE) {
-                const chunk = missingDocs.slice(i, i + BATCH_SIZE);
-                await Promise.all(chunk.map(async (item) => {
-                    try {
-                        const counts = await fetchDocumentCount(item.keyword);
+            for (const item of docsToFill) {
+                try {
+                    const counts = await fetchDocumentCount(item.keyword);
 
-                        const viewDocCnt = (counts.blog || 0) + (counts.cafe || 0);
-                        let ratio = 0;
-                        let tier = 'UNRANKED';
+                    const viewDocCnt = (counts.blog || 0) + (counts.cafe || 0);
+                    let ratio = 0;
+                    let tier = 'UNRANKED';
 
-                        if (viewDocCnt > 0) {
-                            ratio = item.total_search_cnt / viewDocCnt;
-                            if (ratio > 10) tier = 'PLATINUM';
-                            else if (ratio > 5) tier = 'GOLD';
-                            else if (ratio > 1) tier = 'SILVER';
-                            else tier = 'BRONZE';
-                        } else if (item.total_search_cnt > 0) {
-                            tier = 'PLATINUM';
-                            ratio = 99.99;
-                        }
-
-                        const { error: updateError } = await adminDb
-                            .from('keywords')
-                            .update({
-                                total_doc_cnt: counts.total,
-                                blog_doc_cnt: counts.blog,
-                                cafe_doc_cnt: counts.cafe,
-                                web_doc_cnt: counts.web,
-                                news_doc_cnt: counts.news,
-                                golden_ratio: ratio,
-                                tier: tier
-                            })
-                            .eq('id', item.id)
-                            .select('id'); // minimal returning
-
-                        if (updateError) {
-                            console.error('Update Error:', updateError);
-                            failedCount++;
-                            errors.push(`DB: ${updateError.message}`);
-                        } else {
-                            results.push(item.keyword);
-                        }
-                    } catch (e: any) {
-                        const msg = e.message || 'Unknown';
-                        console.error(`Doc fetch failed for ${item.keyword}:`, e);
-                        failedCount++;
-                        errors.push(`Key '${item.keyword}': ${msg}`);
+                    if (viewDocCnt > 0) {
+                        ratio = item.total_search_cnt / viewDocCnt;
+                        if (ratio > 10) tier = 'PLATINUM';
+                        else if (ratio > 5) tier = 'GOLD';
+                        else if (ratio > 1) tier = 'SILVER';
+                        else tier = 'BRONZE';
+                    } else if (item.total_search_cnt > 0) {
+                        tier = 'PLATINUM';
+                        ratio = 99.99;
                     }
-                }));
+
+                    await adminDb
+                        .from('keywords')
+                        .update({
+                            total_doc_cnt: counts.total,
+                            blog_doc_cnt: counts.blog,
+                            cafe_doc_cnt: counts.cafe,
+                            web_doc_cnt: counts.web,
+                            news_doc_cnt: counts.news,
+                            golden_ratio: ratio,
+                            tier: tier,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', item.id);
+
+                    processed.push(item.keyword);
+                } catch (e: any) {
+                    errors.push(`${item.keyword}: ${e.message}`);
+                }
             }
 
-            return {
-                success: true,
-                mode: 'FILL_DOCS',
-                processed: results.length,
-                failed: failedCount,
-                errors: errors.slice(0, 5), // Return top 5 errors
-                items: results
+            results.fillDocs = {
+                processed: processed.length,
+                failed: errors.length,
+                errors: errors.slice(0, 3)
             };
         }
 
-        // 2. EXPAND Mode
+        // === STEP 2: EXPAND (1개 시드) ===
         const { data: seeds, error: seedError } = await adminDb
             .from('keywords')
             .select('id, keyword, total_search_cnt')
@@ -97,50 +85,40 @@ export async function runMiningBatch() {
             .order('total_search_cnt', { ascending: false })
             .limit(1);
 
-        if (seedError) throw seedError;
+        if (!seedError && seeds && seeds.length > 0) {
+            const seed = seeds[0];
+            console.log(`[Batch] EXPAND: Seed = ${seed.keyword}`);
 
-        if (!seeds || seeds.length === 0) {
-            return {
-                success: true,
-                mode: 'IDLE',
-                message: 'No work found'
-            };
+            // Optimistic lock
+            const { error: lockError } = await adminDb
+                .from('keywords')
+                .update({ is_expanded: true })
+                .eq('id', seed.id)
+                .eq('is_expanded', false);
+
+            if (!lockError) {
+                try {
+                    const expandResult = await processSeedKeyword(seed.keyword, 5); // 문서 수 5개만
+                    await adminDb.from('keywords').update({ is_expanded: true }).eq('id', seed.id);
+
+                    results.expand = {
+                        seed: seed.keyword,
+                        processed: expandResult.processed,
+                        saved: expandResult.saved
+                    };
+                } catch (e: any) {
+                    // Rollback
+                    await adminDb.from('keywords').update({ is_expanded: false }).eq('id', seed.id);
+                    results.expand = {
+                        seed: seed.keyword,
+                        error: e.message
+                    };
+                }
+            }
         }
 
-        const seed = seeds[0];
-        console.log(`[Batch] Mode: EXPAND (Seed: ${seed.keyword})`);
-
-        // Optimistic lock: mark as expanded to prevent concurrent reuse
-        const { error: lockError } = await adminDb
-            .from('keywords')
-            .update({ is_expanded: true })
-            .eq('id', seed.id)
-            .eq('is_expanded', false);
-
-        if (lockError) {
-            console.error('Seed lock error:', lockError);
-            throw lockError;
-        }
-
-        let result;
-        try {
-            result = await processSeedKeyword(seed.keyword, 15); // Increase immediate doc fetch for faster coverage
-        } catch (e) {
-            // Rollback the lock so the seed can be retried later
-            await adminDb.from('keywords').update({ is_expanded: false }).eq('id', seed.id);
-            throw e;
-        }
-
-        // Ensure persisted as expanded (idempotent)
-        await adminDb.from('keywords').update({ is_expanded: true }).eq('id', seed.id);
-
-        return {
-            success: true,
-            mode: 'EXPAND',
-            seed: seed.keyword,
-            processed: result.processed,
-            saved: result.saved
-        };
+        // 결과 반환
+        return results;
 
     } catch (e: any) {
         console.error('Batch Error:', e);
