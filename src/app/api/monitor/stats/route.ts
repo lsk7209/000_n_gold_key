@@ -24,8 +24,12 @@ export async function GET() {
         if (e3) throw e3;
 
         // 4. Last Active (Latest updated_at)
-        const { data: lastActive, error: e4 } = await db.from('keywords').select('updated_at').order('updated_at', { ascending: false }).limit(1).single();
-        // Ignore e4 if no data, just return null date
+        const { data: lastActive } = await db
+            .from('keywords')
+            .select('updated_at')
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
         // 5. API Keys Status (based on in-memory cooldown tracking)
         const adStatus = keyManager.getStatusSummary('AD');
@@ -36,7 +40,7 @@ export async function GET() {
             total_keywords: total || 0,
             pending_docs: qDoc || 0,
             pending_seeds: qSeed || 0,
-            last_activity: lastActive?.updated_at || null,
+            last_activity: (lastActive as any)?.updated_at || null,
             api_keys: {
                 ad: adStatus,
                 search: searchStatus

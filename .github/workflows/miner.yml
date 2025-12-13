@@ -2,20 +2,73 @@ name: Golden Keyword Miner Cron
 
 on:
   schedule:
-    - cron: '*/10 * * * *' # Run every 10 minutes (UTC)
+    - cron: '*/5 * * * *' # Run every 5 minutes (UTC) - 공격적 모드
   workflow_dispatch: # Allow manual trigger
 
 jobs:
   mine:
     runs-on: ubuntu-latest
+    timeout-minutes: 2 # 최대 2분 (120초) 제한
+    
     steps:
       - name: Trigger Miner API
+        id: mining
         run: |
+          set -e  # 에러 시 즉시 중단
+          
+          # 환경 변수 검증
           if [ -z "${{ secrets.PROD_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "PROD_URL or CRON_SECRET is not set in GitHub Secrets."
+            echo "❌ ERROR: PROD_URL or CRON_SECRET is not set in GitHub Secrets."
             exit 1
           fi
-          curl -X GET "${{ secrets.PROD_URL }}/api/miner/execute" \
-            -H "CRON_SECRET: ${{ secrets.CRON_SECRET }}" \
-            --fail \
-            --max-time 70
+          
+          START_TIME=$(date +%s)
+          echo "🚀 Starting mining batch at $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          
+          # API 호출 with retry logic
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          SUCCESS=false
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
+            echo "📡 Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
+            
+            # curl로 API 호출
+            RESPONSE=$(curl -X GET "${{ secrets.PROD_URL }}/api/miner/execute" \
+              -H "CRON_SECRET: ${{ secrets.CRON_SECRET }}" \
+              -w "\n%{http_code}" \
+              --max-time 70 \
+              --silent \
+              --show-error) || true
+            
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              SUCCESS=true
+              echo "✅ Success! HTTP $HTTP_CODE"
+              echo "📊 Response:"
+              echo "$BODY" | jq '.' || echo "$BODY"
+            else
+              echo "⚠️  Failed with HTTP $HTTP_CODE"
+              echo "Response: $BODY"
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                WAIT_TIME=$((RETRY_COUNT * 5))
+                echo "⏳ Waiting ${WAIT_TIME}s before retry..."
+                sleep $WAIT_TIME
+              fi
+            fi
+          done
+          
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          
+          if [ "$SUCCESS" = "false" ]; then
+            echo "❌ Failed after $MAX_RETRIES attempts (${DURATION}s)"
+            exit 1
+          fi
+          
+          echo "⏱️  Total execution time: ${DURATION} seconds"
+          echo "🎉 Mining batch completed successfully!"
+

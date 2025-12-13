@@ -146,9 +146,9 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
 
     // A. Rows with Document Counts (Complete Data) -> Standard Upsert (Update allowed)
     if (rowsToInsert.length > 0) {
-        const { error: insertError } = await adminDb
+        const { error: insertError } = await (adminDb as any)
             .from('keywords')
-            .upsert(rowsToInsert, { onConflict: 'keyword' })
+            .upsert(rowsToInsert as any, { onConflict: 'keyword' })
             .select('id');
 
         if (insertError) {
@@ -160,9 +160,9 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
 
     // B. Rows Deferred (Null Docs) -> Insert Only (ignoreDuplicates)
     if (rowsDeferred.length > 0) {
-        const { error: deferredError } = await adminDb
+        const { error: deferredError } = await (adminDb as any)
             .from('keywords')
-            .upsert(rowsDeferred, { onConflict: 'keyword', ignoreDuplicates: true })
+            .upsert(rowsDeferred as any, { onConflict: 'keyword', ignoreDuplicates: true })
             .select('id');
 
         if (deferredError) {

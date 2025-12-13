@@ -17,13 +17,13 @@ export async function runMiningBatch() {
         // 1. FILL_DOCS (소량 - 10개)
         // 2. EXPAND (1개 시드)
 
-        // === STEP 1: FILL_DOCS (10개만 빠르게) ===
+        // === STEP 1: FILL_DOCS (30개로 증가 - 공격적 모드) ===
         const { data: docsToFill, error: docsError } = await adminDb
             .from('keywords')
             .select('id, keyword, total_search_cnt')
             .is('total_doc_cnt', null)
             .order('total_search_cnt', { ascending: false })
-            .limit(10);
+            .limit(30) as { data: any[] | null, error: any };  // 10 → 30 증가
 
         if (!docsError && docsToFill && docsToFill.length > 0) {
             console.log(`[Batch] FILL_DOCS: Processing ${docsToFill.length} items`);
@@ -32,24 +32,24 @@ export async function runMiningBatch() {
 
             for (const item of docsToFill) {
                 try {
-                    const counts = await fetchDocumentCount(item.keyword);
+                    const counts = await fetchDocumentCount((item as any).keyword);
 
                     const viewDocCnt = (counts.blog || 0) + (counts.cafe || 0);
                     let ratio = 0;
                     let tier = 'UNRANKED';
 
                     if (viewDocCnt > 0) {
-                        ratio = item.total_search_cnt / viewDocCnt;
+                        ratio = (item as any).total_search_cnt / viewDocCnt;
                         if (ratio > 10) tier = 'PLATINUM';
                         else if (ratio > 5) tier = 'GOLD';
                         else if (ratio > 1) tier = 'SILVER';
                         else tier = 'BRONZE';
-                    } else if (item.total_search_cnt > 0) {
+                    } else if ((item as any).total_search_cnt > 0) {
                         tier = 'PLATINUM';
                         ratio = 99.99;
                     }
 
-                    await adminDb
+                    await (adminDb as any)
                         .from('keywords')
                         .update({
                             total_doc_cnt: counts.total,
@@ -61,11 +61,11 @@ export async function runMiningBatch() {
                             tier: tier,
                             updated_at: new Date().toISOString()
                         })
-                        .eq('id', item.id);
+                        .eq('id', (item as any).id);
 
-                    processed.push(item.keyword);
+                    processed.push((item as any).keyword);
                 } catch (e: any) {
-                    errors.push(`${item.keyword}: ${e.message}`);
+                    errors.push(`${(item as any).keyword}: ${e.message}`);
                 }
             }
 
@@ -83,14 +83,14 @@ export async function runMiningBatch() {
             .eq('is_expanded', false)
             .gte('total_search_cnt', 1000)
             .order('total_search_cnt', { ascending: false })
-            .limit(1);
+            .limit(1) as { data: any[] | null, error: any };
 
         if (!seedError && seeds && seeds.length > 0) {
             const seed = seeds[0];
             console.log(`[Batch] EXPAND: Seed = ${seed.keyword}`);
 
             // Optimistic lock
-            const { error: lockError } = await adminDb
+            const { error: lockError } = await (adminDb as any)
                 .from('keywords')
                 .update({ is_expanded: true })
                 .eq('id', seed.id)
@@ -98,8 +98,8 @@ export async function runMiningBatch() {
 
             if (!lockError) {
                 try {
-                    const expandResult = await processSeedKeyword(seed.keyword, 5); // 문서 수 5개만
-                    await adminDb.from('keywords').update({ is_expanded: true }).eq('id', seed.id);
+                    const expandResult = await processSeedKeyword(seed.keyword, 10); // 문서 수 10개 (기존: 5개)
+                    await (adminDb as any).from('keywords').update({ is_expanded: true }).eq('id', seed.id);
 
                     results.expand = {
                         seed: seed.keyword,
@@ -108,7 +108,7 @@ export async function runMiningBatch() {
                     };
                 } catch (e: any) {
                     // Rollback
-                    await adminDb.from('keywords').update({ is_expanded: false }).eq('id', seed.id);
+                    await (adminDb as any).from('keywords').update({ is_expanded: false }).eq('id', seed.id);
                     results.expand = {
                         seed: seed.keyword,
                         error: e.message
