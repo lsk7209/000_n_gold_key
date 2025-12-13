@@ -1,11 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
-const supabaseKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co').trim();
+const supabaseKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key').trim();
 
-if (!supabaseUrl || !supabaseKey) {
-    console.warn('Warning: Missing Supabase environment variables. App will not function correctly.');
-    // Do not throw error to allow build phase to pass if vars are missing
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.warn('⚠️ Warning: Missing Supabase environment variables. Using placeholder values for build.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
