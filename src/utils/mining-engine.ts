@@ -9,9 +9,14 @@ export interface MiningResult {
     items: any[]; // The fully processed items to return to UI
 }
 
-export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0, skipDocFetch = false): Promise<MiningResult> {
+export async function processSeedKeyword(
+    seedKeyword: string,
+    limitDocCount = 0,
+    skipDocFetch = false,
+    minSearchVolume = 1000  // 기본값 1000, 수동 수집 시 0으로 설정 가능
+): Promise<MiningResult> {
     const adminDb = getServiceSupabase();
-    console.log(`[MiningEngine] Processing seed: ${seedKeyword} (SkipDoc: ${skipDocFetch})`);
+    console.log(`[MiningEngine] Processing seed: ${seedKeyword} (SkipDoc: ${skipDocFetch}, MinVolume: ${minSearchVolume})`);
 
     // 1. Fetch Related Keywords (Ad API)
     let relatedList: any[] = [];
@@ -69,9 +74,12 @@ export async function processSeedKeyword(seedKeyword: string, limitDocCount = 0,
         };
     });
 
-    // 3. Filter (Volume >= 1000 & Blacklist)
-    const filtered = candidates.filter((c: any) => c.total_search_cnt >= 1000 && !isBlacklisted(c.originalKeyword));
+    // 3. Filter (Volume >= minSearchVolume & Blacklist)
+    // 수동 수집 시 minSearchVolume=0으로 모든 키워드 표시
+    const filtered = candidates.filter((c: any) => c.total_search_cnt >= minSearchVolume && !isBlacklisted(c.originalKeyword));
     filtered.sort((a: any, b: any) => b.total_search_cnt - a.total_search_cnt);
+
+    console.log(`[MiningEngine] Found ${relatedList.length} related, filtered to ${filtered.length} (min: ${minSearchVolume})`);
 
     let candidatesToProcess: any[] = [];
     let candidatesToSaveOnly: any[] = [];

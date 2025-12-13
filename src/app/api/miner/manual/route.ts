@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
         for (const seed of seeds) {
             try {
                 // For manual collection, we want to fetch document counts as well.
+                // keepvolume filter at 1000+
                 // Increased limit to 100 for better coverage (was 50)
                 const result = await processSeedKeyword(seed, 100, false);
                 results.push({

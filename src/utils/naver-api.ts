@@ -24,6 +24,8 @@ async function generateSignature(timestamp: string, method: string, uri: string,
 }
 
 export async function fetchRelatedKeywords(seed: string) {
+    console.log(`[NaverAPI] Fetching related keywords for: "${seed}"`);
+
     // Retry up to 3 times with different keys
     let lastError: any;
 
@@ -56,37 +58,54 @@ export async function fetchRelatedKeywords(seed: string) {
                 headers['X-Customer'] = customerId;
             }
 
+            console.log(`[NaverAPI] Attempt ${i + 1}/3, calling Ad API...`);
             const response = await fetch(url, { headers });
+            console.log(`[NaverAPI] Response status: ${response.status}`);
 
             if (response.status === 429) {
                 keyManager.report429(key.id, 'AD');
-                console.warn(`Ad Key ${key.id} rate limited. Retrying...`);
+                console.warn(`[NaverAPI] Ad Key ${key.id} rate limited. Retrying...`);
                 await sleep(3000); // gentle backoff per notice
                 continue; // Try next key
             }
 
             if (!response.ok) {
                 const text = await response.text();
+                console.error(`[NaverAPI] Ad API Error ${response.status}: ${text}`);
                 // If it's a 4xx error (other than 429), it might be invalid key signature or bad request. 
                 // We should probably try another key just in case, unless it's 400 Bad Request (logic error).
                 // For safety, let's treat it as key failure and retry.
-                console.warn(`Ad API Error ${response.status}: ${text}. Retrying with new key...`);
+                console.warn(`[NaverAPI] Retrying with new key...`);
+                lastError = new Error(`Ad API Error: ${response.status} - ${text}`);
                 continue;
             }
 
             const data = await response.json();
-            return data.keywordList || [];
+            const keywordList = data.keywordList || [];
+
+            console.log(`[NaverAPI] Success! Got ${keywordList.length} keywords for "${seed}"`);
+
+            // 샘플 데이터 로깅 (처음 3개만)
+            if (keywordList.length > 0 && keywordList.length <= 3) {
+                console.log(`[NaverAPI] Sample:`, keywordList.map((k: any) => `${k.relKeyword} (${k.monthlyPcQcCnt}/${k.monthlyMobileQcCnt})`));
+            } else if (keywordList.length > 3) {
+                console.log(`[NaverAPI] Sample (first 3):`, keywordList.slice(0, 3).map((k: any) => `${k.relKeyword} (${k.monthlyPcQcCnt}/${k.monthlyMobileQcCnt})`));
+            }
+
+            return keywordList;
 
         } catch (e) {
+            console.error(`[NaverAPI] Exception on attempt ${i + 1}:`, e);
             lastError = e;
-            console.error(`Attempt ${i + 1} failed for seed ${seed}:`, e);
+            await sleep(1000);
             // Verify if we should stop strictly? KeyManager throws if NO keys left.
             // If it's a 'No keys' error, break.
             if (e instanceof Error && e.message.includes('No AD keys')) throw e;
         }
     }
 
-    throw lastError || new Error('Failed to fetch related keywords after retries');
+    console.error(`[NaverAPI] Failed after 3 attempts for "${seed}"`);
+    throw lastError || new Error('Failed to fetch related keywords');
 }
 
 export async function fetchDocumentCount(keyword: string) {
