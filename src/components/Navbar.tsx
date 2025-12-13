@@ -51,9 +51,9 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                     <MonitoringStatus />
-                </div>
+                </div> */}
             </div>
         </nav>
     );
