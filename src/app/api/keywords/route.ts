@@ -9,6 +9,13 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
+    const authHeader = req.headers.get('CRON_SECRET');
+    const queryKey = searchParams.get('key');
+    const secret = process.env.CRON_SECRET;
+    if (!secret || (authHeader !== secret && queryKey !== secret)) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const cursor = parseInt(searchParams.get('cursor') || '0');
     const limit = parseInt(searchParams.get('limit') || '50');
     const sort = searchParams.get('sort') || 'search_desc'; // search_desc, opp_desc, cafe_asc, blog_asc, web_asc, news_asc

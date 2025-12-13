@@ -2,7 +2,7 @@ name: Golden Keyword Miner Cron
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # Run every 5 minutes
+    - cron: '*/10 * * * *' # Run every 10 minutes (UTC)
   workflow_dispatch: # Allow manual trigger
 
 jobs:
