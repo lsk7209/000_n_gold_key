@@ -15,7 +15,7 @@ export async function runMiningBatch() {
             .select('id, keyword, total_search_cnt')
             .is('total_doc_cnt', null)
             .order('total_search_cnt', { ascending: false }) // Prioritize High Volume
-            .limit(30); // Smaller batch to reduce load
+            .limit(40); // Slightly higher batch for throughput
 
         if (missingError) throw missingError;
 
@@ -26,7 +26,7 @@ export async function runMiningBatch() {
             const errors: string[] = [];
 
             // Parallel Process with conservative concurrency (protect keys & DB)
-            const BATCH_SIZE = 4;
+            const BATCH_SIZE = 6;
             for (let i = 0; i < missingDocs.length; i += BATCH_SIZE) {
                 const chunk = missingDocs.slice(i, i + BATCH_SIZE);
                 await Promise.all(chunk.map(async (item) => {
@@ -124,7 +124,7 @@ export async function runMiningBatch() {
 
         let result;
         try {
-            result = await processSeedKeyword(seed.keyword, 10); // Limit immediate doc fetch to reduce load
+            result = await processSeedKeyword(seed.keyword, 15); // Increase immediate doc fetch for faster coverage
         } catch (e) {
             // Rollback the lock so the seed can be retried later
             await adminDb.from('keywords').update({ is_expanded: false }).eq('id', seed.id);
