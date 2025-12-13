@@ -1,7 +1,8 @@
 
 import { createClient } from '@supabase/supabase-js';
-import { Activity, Database, Layers, Search, TrendingUp, AlertCircle } from 'lucide-react';
+import { Activity, Database, Layers, Search, TrendingUp, AlertCircle, KeyRound } from 'lucide-react';
 import Link from 'next/link';
+import { keyManager } from '@/utils/key-manager';
 
 // Force dynamic to get latest stats
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,8 @@ export default async function MonitorPage() {
     let goldCount = 0;
     let recentLogs: any[] = [];
     let errorMsg = '';
+    const adKeyStatus = keyManager.getStatusSummary('AD');
+    const searchKeyStatus = keyManager.getStatusSummary('SEARCH');
 
     try {
         // Use Service Role Key if available, otherwise fallback to Anon Key
@@ -149,6 +152,13 @@ export default async function MonitorPage() {
                         icon={<TrendingUp className="w-5 h-5" />}
                         desc="플래티넘 + 골드 등급"
                         color="amber"
+                    />
+                    <StatCard
+                        title="API 키 상태"
+                        value={`AD ${adKeyStatus.available}/${adKeyStatus.total} • SRCH ${searchKeyStatus.available}/${searchKeyStatus.total}`}
+                        icon={<KeyRound className="w-5 h-5" />}
+                        desc={`대기 AD ${adKeyStatus.cooling}, SRCH ${searchKeyStatus.cooling}`}
+                        color={(adKeyStatus.available > 0 && searchKeyStatus.available > 0) ? 'emerald' : 'amber'}
                     />
                 </div>
 

@@ -4,6 +4,14 @@ import { processSeedKeyword } from '@/utils/mining-engine';
 
 export async function POST(req: NextRequest) {
     try {
+        const authHeader = req.headers.get('CRON_SECRET');
+        const queryKey = req.nextUrl.searchParams.get('key');
+        const secret = process.env.CRON_SECRET;
+
+        if (!secret || (authHeader !== secret && queryKey !== secret)) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { keywords } = await req.json();
 
         if (!keywords || !Array.isArray(keywords)) {
