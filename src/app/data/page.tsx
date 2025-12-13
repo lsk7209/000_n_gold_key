@@ -27,13 +27,27 @@ export default function DataPage() {
 
                 {/* Main List */}
                 <div className="space-y-4">
-                    <div className="flex gap-2 justify-end">
+                    <div className="flex flex-wrap gap-2 justify-end">
                         <button
                             onClick={() => setSort('search_desc')}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${sort === 'search_desc' ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50'}`}
                         >
                             전체 조회 (검색량순)
                         </button>
+                        {[
+                            { key: 'cafe_asc', label: '카페 적은순' },
+                            { key: 'blog_asc', label: '블로그 적은순' },
+                            { key: 'web_asc', label: '웹 적은순' },
+                            { key: 'news_asc', label: '뉴스 적은순' },
+                        ].map((item) => (
+                            <button
+                                key={item.key}
+                                onClick={() => setSort(item.key)}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${sort === item.key ? 'bg-emerald-600 text-white' : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50'}`}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
                     </div>
 
 

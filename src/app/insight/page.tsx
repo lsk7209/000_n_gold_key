@@ -22,7 +22,7 @@ export default function InsightPage() {
                             100만+ 데이터 기반 실시간 키워드 분석 대시보드
                         </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         <button
                             onClick={() => setSort('search_desc')}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${sort === 'search_desc' ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50'}`}
@@ -36,6 +36,20 @@ export default function InsightPage() {
                             <TrendingUp className="w-4 h-4 inline mr-1" />
                             황금비율순
                         </button>
+                        {[
+                            { key: 'cafe_asc', label: '카페 적은순' },
+                            { key: 'blog_asc', label: '블로그 적은순' },
+                            { key: 'web_asc', label: '웹 적은순' },
+                            { key: 'news_asc', label: '뉴스 적은순' },
+                        ].map((item) => (
+                            <button
+                                key={item.key}
+                                onClick={() => setSort(item.key)}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${sort === item.key ? 'bg-emerald-600 text-white' : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50'}`}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
                     </div>
                 </header>
 

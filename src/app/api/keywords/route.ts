@@ -11,12 +11,17 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const cursor = parseInt(searchParams.get('cursor') || '0');
     const limit = parseInt(searchParams.get('limit') || '50');
-    const sort = searchParams.get('sort') || 'search_desc'; // search_desc or opp_desc
+    const sort = searchParams.get('sort') || 'search_desc'; // search_desc, opp_desc, cafe_asc, blog_asc, web_asc, news_asc
     // Filters could be added here
 
     let query = supabase
         .from('keywords')
         .select('*', { count: 'estimated' });
+
+    const requiresDocs = ['cafe_asc', 'blog_asc', 'web_asc', 'news_asc'].includes(sort);
+    if (requiresDocs) {
+        query = query.not('total_doc_cnt', 'is', null);
+    }
 
     // Sorting
     if (sort === 'opp_desc') {
@@ -24,6 +29,22 @@ export async function GET(req: NextRequest) {
         // Golden Ratio = Search / Docs.
         // Sort by golden_ratio desc
         query = query.order('golden_ratio', { ascending: false });
+    } else if (sort === 'cafe_asc') {
+        query = query
+            .order('cafe_doc_cnt', { ascending: true, nullsFirst: false })
+            .order('total_search_cnt', { ascending: false });
+    } else if (sort === 'blog_asc') {
+        query = query
+            .order('blog_doc_cnt', { ascending: true, nullsFirst: false })
+            .order('total_search_cnt', { ascending: false });
+    } else if (sort === 'web_asc') {
+        query = query
+            .order('web_doc_cnt', { ascending: true, nullsFirst: false })
+            .order('total_search_cnt', { ascending: false });
+    } else if (sort === 'news_asc') {
+        query = query
+            .order('news_doc_cnt', { ascending: true, nullsFirst: false })
+            .order('total_search_cnt', { ascending: false });
     } else {
         // search_desc
         query = query.order('total_search_cnt', { ascending: false });
