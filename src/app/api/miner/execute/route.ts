@@ -39,20 +39,39 @@ export async function GET(req: NextRequest) {
         if (mode === 'TURBO') {
             // Check for Stop Conditions (Quota Exhaustion or System Failure)
             const fillErrors = result.fillDocs?.errors || [];
-            const isSearchKeyExhausted = fillErrors.some((e: string) => e.includes('No SEARCH keys'));
+            const expandErrors = result.expand?.details?.filter((d: string) => d.includes('rejected') || d.includes('error')) || [];
+            const allErrors = [...fillErrors, ...expandErrors];
+            
+            // 검색 API 키 소진 체크
+            const isSearchKeyExhausted = allErrors.some((e: string) => 
+                e.includes('No SEARCH keys') || 
+                e.includes('All SEARCH keys are rate limited')
+            );
+            
+            // 검색광고 API 키 소진 체크
+            const isAdKeyExhausted = allErrors.some((e: string) => 
+                e.includes('No AD keys') || 
+                e.includes('All AD keys are rate limited') ||
+                e.includes('Failed to fetch related keywords')
+            );
 
             const totalTried = (result.fillDocs?.processed || 0) + (result.fillDocs?.failed || 0);
             const isTotalFailure = totalTried > 0 && (result.fillDocs?.processed || 0) === 0;
 
-            if (isSearchKeyExhausted || (isTotalFailure && fillErrors.length > 5)) {
-                console.warn('[Miner] TURBO STOP: Daily Quota Likely Exhausted or High Failure Rate.');
+            // API 키 모두 소진 또는 연속 실패 시 자동 중지
+            if (isSearchKeyExhausted || isAdKeyExhausted || (isTotalFailure && allErrors.length > 5)) {
+                const reason = isSearchKeyExhausted ? 'Search API Keys Exhausted' 
+                    : isAdKeyExhausted ? 'Ad API Keys Exhausted'
+                    : 'High Failure Rate';
+                
+                console.warn(`[Miner] TURBO STOP: ${reason}. Auto-switching to NORMAL mode.`);
 
-                // Disable Turbo Mode in DB
+                // Disable Turbo Mode in DB (자동으로 일반 모드로 변경)
                 await db.from('settings' as any).upsert({ key: 'mining_mode', value: 'NORMAL' } as any);
 
                 return NextResponse.json({
                     ...result,
-                    info: 'Turbo Mode Automatically Stopped (Quota Exhausted or All Failed)'
+                    info: `Turbo Mode Automatically Stopped (${reason}). Switched to NORMAL mode.`
                 });
             }
 

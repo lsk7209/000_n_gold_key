@@ -1,14 +1,48 @@
 
 'use client';
 
-import { useState } from 'react';
-import { triggerMining, setMiningMode } from '@/app/actions';
+import { useState, useEffect } from 'react';
+import { triggerMining, setMiningMode, getMiningMode } from '@/app/actions';
 import { Play, FastForward, Square, Zap, CheckCircle2 } from 'lucide-react';
 
 export default function MiningControls() {
     const [isTurbo, setIsTurbo] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
+
+    // 컴포넌트 마운트 시 DB에서 현재 모드 확인 (브라우저 새로고침 후에도 유지)
+    useEffect(() => {
+        const checkMode = async () => {
+            try {
+                const result = await getMiningMode();
+                if (result.success) {
+                    const wasTurbo = isTurbo;
+                    const isNowTurbo = result.mode === 'TURBO';
+                    
+                    setIsTurbo(isNowTurbo);
+                    
+                    // 상태 변경 감지
+                    if (isNowTurbo && !wasTurbo) {
+                        const time = new Date().toLocaleTimeString();
+                        setLogs(prev => [`[${time}] 🔄 터보 모드가 활성화되어 있습니다. (DB에서 복원)`, ...prev].slice(0, 50));
+                    } else if (!isNowTurbo && wasTurbo) {
+                        const time = new Date().toLocaleTimeString();
+                        setLogs(prev => [`[${time}] ⚠️ 터보 모드가 자동으로 중지되었습니다. (API 키 소진 또는 오류)`, ...prev].slice(0, 50));
+                    }
+                }
+            } catch (e: any) {
+                console.error('Mode check error:', e);
+            }
+        };
+        checkMode();
+
+        // 주기적으로 상태 확인 (API 키 소진으로 자동 중지된 경우 감지)
+        const interval = setInterval(() => {
+            checkMode().catch(console.error);
+        }, 10000); // 10초마다 확인
+
+        return () => clearInterval(interval);
+    }, [isTurbo]); // isTurbo를 의존성에 포함하여 상태 변경 감지
 
     const addLog = (msg: string) => {
         const time = new Date().toLocaleTimeString();

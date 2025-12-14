@@ -10,23 +10,40 @@ export async function runMiningBatch() {
     const start = Date.now();
     console.log('[Batch] Starting Parallel Mining Batch...');
 
+    // 터보모드 확인 (API 키 최대 활용을 위한 배치 크기 조정)
+    const { data: setting } = await adminDb
+        .from('settings')
+        .select('value')
+        .eq('key', 'mining_mode')
+        .maybeSingle();
+    
+    const isTurboMode = (setting as any)?.value === 'TURBO';
+    
+    // 터보모드: API 키 최대 활용 (검색광고 API 4개=10000호출, 문서수 API 9개)
+    // 일반 모드: 안정적인 수집 (5분마다 GitHub Actions)
+    const SEED_COUNT = isTurboMode ? 4 : 2; // 터보: 4개 시드, 일반: 2개 시드
+    const FILL_DOCS_BATCH = isTurboMode ? 50 : 30; // 터보: 50개, 일반: 30개
+    const MIN_SEARCH_VOLUME = isTurboMode ? 300 : 500; // 터보: 더 낮은 기준으로 더 많이 수집
+
+    console.log(`[Batch] Mode: ${isTurboMode ? 'TURBO (Max API Usage)' : 'NORMAL'}, Seeds: ${SEED_COUNT}, FillDocs: ${FILL_DOCS_BATCH}`);
+
     // === Task 1: EXPAND (Keywords Expansion) ===
     const taskExpand = async () => {
+        
         const { data: seedsData, error: seedError } = await adminDb
             .from('keywords')
             .select('id, keyword, total_search_cnt')
             .eq('is_expanded', false)
-            .gte('total_search_cnt', 100)
+            .gte('total_search_cnt', MIN_SEARCH_VOLUME)
             .order('total_search_cnt', { ascending: false })
-            .limit(50) as { data: any[] | null, error: any };
+            .limit(isTurboMode ? 100 : 50) as { data: any[] | null, error: any }; // 터보: 더 많은 후보
 
         if (seedError || !seedsData || seedsData.length === 0) return null;
 
-        // Shuffle and pick 5 keys
-        const shuffled = seedsData.sort(() => 0.5 - Math.random());
-        const seeds = shuffled.slice(0, 5);
+        // 검색량 상위 우선 선택 (랜덤 대신)
+        const seeds = seedsData.slice(0, SEED_COUNT);
 
-        console.log(`[Batch] EXPAND: Processing ${seeds.length} seeds (from top ${seedsData.length})`);
+        console.log(`[Batch] EXPAND: Processing ${seeds.length} seeds (from top ${seedsData.length}, min: ${MIN_SEARCH_VOLUME})`);
 
         const expandResults = await Promise.all(
             seeds.map(async (seed) => {
@@ -40,7 +57,7 @@ export async function runMiningBatch() {
                 if (lockError) return { status: 'skipped', seed: seed.keyword };
 
                 try {
-                    const res = await processSeedKeyword(seed.keyword, 0, true, 100);
+                    const res = await processSeedKeyword(seed.keyword, 0, true, MIN_SEARCH_VOLUME);
                     // Mark confirmed
                     await (adminDb as any).from('keywords').update({ is_expanded: true }).eq('id', seed.id);
                     return { status: 'fulfilled', seed: seed.keyword, saved: res.saved };
@@ -64,7 +81,10 @@ export async function runMiningBatch() {
 
     // === Task 2: FILL_DOCS (Document Counts) ===
     const taskFillDocs = async () => {
-        const BATCH_SIZE = 100;
+        // 터보모드: API 키 최대 활용을 위해 배치 크기 증가
+        const BATCH_SIZE = FILL_DOCS_BATCH;
+        const CHUNK_SIZE = isTurboMode ? 30 : 25; // 터보: 더 큰 청크로 병렬 처리
+        
         const { data: docsToFill, error: docsError } = await adminDb
             .from('keywords')
             .select('id, keyword, total_search_cnt')
@@ -74,9 +94,7 @@ export async function runMiningBatch() {
 
         if (docsError || !docsToFill || docsToFill.length === 0) return null;
 
-        console.log(`[Batch] FILL_DOCS: Processing ${docsToFill.length} items (Chunks of 25)`);
-
-        const CHUNK_SIZE = 25;
+        console.log(`[Batch] FILL_DOCS: Processing ${docsToFill.length} items (Chunks of ${CHUNK_SIZE})`);
         let processedResults: any[] = [];
 
         for (let i = 0; i < docsToFill.length; i += CHUNK_SIZE) {
