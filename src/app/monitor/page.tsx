@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Activity, Database, Layers, Search, TrendingUp, AlertCircle, KeyRound } from 'lucide-react';
 import Link from 'next/link';
 import { keyManager } from '@/utils/key-manager';
+import MiningControls from '@/components/MiningControls';
 
 // Force dynamic to get latest stats
 export const dynamic = 'force-dynamic';
@@ -221,31 +222,8 @@ export default async function MonitorPage() {
                     </div>
                 </div>
 
-                {/* Server Status (Simulated) */}
-                <div className="bg-zinc-900 text-white rounded-2xl p-6 shadow-lg overflow-hidden relative">
-                    <div className="absolute top-0 right-0 p-32 bg-emerald-500/10 rounded-full blur-3xl"></div>
-                    <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                        <div>
-                            <h3 className="text-lg font-bold flex items-center gap-2">
-                                <Activity className="w-5 h-5 text-emerald-400" />
-                                System Status: Operational
-                            </h3>
-                            <p className="text-zinc-400 text-sm mt-1">
-                                모든 수집기가 정상 작동 중입니다. GitHub Cron이 10분마다 실행됩니다.
-                            </p>
-                        </div>
-                        <div className="flex gap-4 text-sm">
-                            <div className="px-4 py-2 bg-white/5 rounded-lg border border-white/10">
-                                <div className="text-zinc-400 text-xs uppercase tracking-wider mb-1">Database</div>
-                                <div className="font-mono text-emerald-400">Connected</div>
-                            </div>
-                            <div className="px-4 py-2 bg-white/5 rounded-lg border border-white/10">
-                                <div className="text-zinc-400 text-xs uppercase tracking-wider mb-1">Miners</div>
-                                <div className="font-mono text-blue-400">Idle</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {/* Mining Control Panel */}
+                <MiningControls />
 
             </div>
         </div>
