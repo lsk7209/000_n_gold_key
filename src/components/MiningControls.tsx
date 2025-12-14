@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { triggerMining, setMiningMode, getMiningMode } from '@/app/actions';
 import { Play, FastForward, Square, Zap, CheckCircle2 } from 'lucide-react';
 
@@ -9,6 +9,7 @@ export default function MiningControls() {
     const [isTurbo, setIsTurbo] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
+    const isInitialLoadRef = useRef(true);
 
     // 컴포넌트 마운트 시 DB에서 현재 모드 확인 (브라우저 새로고침 후에도 유지)
     useEffect(() => {
@@ -16,24 +17,37 @@ export default function MiningControls() {
             try {
                 const result = await getMiningMode();
                 if (result.success) {
-                    const wasTurbo = isTurbo;
-                    const isNowTurbo = result.mode === 'TURBO';
-                    
-                    setIsTurbo(isNowTurbo);
-                    
-                    // 상태 변경 감지
-                    if (isNowTurbo && !wasTurbo) {
-                        const time = new Date().toLocaleTimeString();
-                        setLogs(prev => [`[${time}] 🔄 터보 모드가 활성화되어 있습니다. (DB에서 복원)`, ...prev].slice(0, 50));
-                    } else if (!isNowTurbo && wasTurbo) {
-                        const time = new Date().toLocaleTimeString();
-                        setLogs(prev => [`[${time}] ⚠️ 터보 모드가 자동으로 중지되었습니다. (API 키 소진 또는 오류)`, ...prev].slice(0, 50));
-                    }
+                    setIsTurbo(prevTurbo => {
+                        const wasTurbo = prevTurbo;
+                        const isNowTurbo = result.mode === 'TURBO';
+                        
+                        // 초기 로드 시 또는 상태 변경 감지
+                        if (isInitialLoadRef.current) {
+                            if (isNowTurbo) {
+                                const time = new Date().toLocaleTimeString();
+                                setLogs(prev => [`[${time}] 🔄 터보 모드가 활성화되어 있습니다. (DB에서 복원)`, ...prev].slice(0, 50));
+                            }
+                            isInitialLoadRef.current = false;
+                        } else {
+                            // 주기적 확인 중 상태 변경 감지
+                            if (isNowTurbo && !wasTurbo) {
+                                const time = new Date().toLocaleTimeString();
+                                setLogs(prev => [`[${time}] 🔄 터보 모드가 활성화되어 있습니다.`, ...prev].slice(0, 50));
+                            } else if (!isNowTurbo && wasTurbo) {
+                                const time = new Date().toLocaleTimeString();
+                                setLogs(prev => [`[${time}] ⚠️ 터보 모드가 자동으로 중지되었습니다. (API 키 소진 또는 오류)`, ...prev].slice(0, 50));
+                            }
+                        }
+                        
+                        return isNowTurbo;
+                    });
                 }
             } catch (e: any) {
                 console.error('Mode check error:', e);
             }
         };
+        
+        // 초기 로드 시 즉시 확인
         checkMode();
 
         // 주기적으로 상태 확인 (API 키 소진으로 자동 중지된 경우 감지)
@@ -42,7 +56,7 @@ export default function MiningControls() {
         }, 10000); // 10초마다 확인
 
         return () => clearInterval(interval);
-    }, [isTurbo]); // isTurbo를 의존성에 포함하여 상태 변경 감지
+    }, []); // 빈 의존성 배열: 마운트 시에만 실행
 
     const addLog = (msg: string) => {
         const time = new Date().toLocaleTimeString();
