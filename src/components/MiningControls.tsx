@@ -15,17 +15,25 @@ export default function MiningControls() {
     useEffect(() => {
         const checkMode = async () => {
             try {
+                console.log('[MiningControls] Checking mode from DB...');
                 const result = await getMiningMode();
+                console.log('[MiningControls] Mode check result:', result);
+                
                 if (result.success) {
                     setIsTurbo(prevTurbo => {
                         const wasTurbo = prevTurbo;
                         const isNowTurbo = result.mode === 'TURBO';
+                        
+                        console.log('[MiningControls] Mode state update:', { wasTurbo, isNowTurbo, isInitial: isInitialLoadRef.current });
                         
                         // 초기 로드 시 또는 상태 변경 감지
                         if (isInitialLoadRef.current) {
                             if (isNowTurbo) {
                                 const time = new Date().toLocaleTimeString();
                                 setLogs(prev => [`[${time}] 🔄 터보 모드가 활성화되어 있습니다. (DB에서 복원)`, ...prev].slice(0, 50));
+                            } else {
+                                const time = new Date().toLocaleTimeString();
+                                setLogs(prev => [`[${time}] ℹ️ 일반 모드입니다.`, ...prev].slice(0, 50));
                             }
                             isInitialLoadRef.current = false;
                         } else {
@@ -41,9 +49,14 @@ export default function MiningControls() {
                         
                         return isNowTurbo;
                     });
+                } else {
+                    console.error('[MiningControls] Failed to get mode:', result.error);
+                    // 실패 시에도 기본값으로 설정
+                    setIsTurbo(false);
                 }
             } catch (e: any) {
-                console.error('Mode check error:', e);
+                console.error('[MiningControls] Mode check error:', e);
+                setIsTurbo(false);
             }
         };
         
