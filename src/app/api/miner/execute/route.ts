@@ -37,15 +37,30 @@ export async function GET(req: NextRequest) {
         // Supabase JS library parses JSONB automatically. So "TURBO" string.
 
         if (mode === 'TURBO') {
+            // Check for Stop Conditions (Quota Exhaustion or System Failure)
+            const fillErrors = result.fillDocs?.errors || [];
+            const isSearchKeyExhausted = fillErrors.some((e: string) => e.includes('No SEARCH keys'));
+
+            const totalTried = (result.fillDocs?.processed || 0) + (result.fillDocs?.failed || 0);
+            const isTotalFailure = totalTried > 0 && (result.fillDocs?.processed || 0) === 0;
+
+            if (isSearchKeyExhausted || (isTotalFailure && fillErrors.length > 5)) {
+                console.warn('[Miner] TURBO STOP: Daily Quota Likely Exhausted or High Failure Rate.');
+
+                // Disable Turbo Mode in DB
+                await db.from('settings' as any).upsert({ key: 'mining_mode', value: 'NORMAL' } as any);
+
+                return NextResponse.json({
+                    ...result,
+                    info: 'Turbo Mode Automatically Stopped (Quota Exhausted or All Failed)'
+                });
+            }
+
             const selfUrl = `${req.nextUrl.origin}/api/miner/execute?key=${secret}`;
             console.log(`[Miner] Turbo Mode Active. Spawning next batch: ${selfUrl}`);
 
-            // Spawn next run asynchronously (Fire and Forget-ish)
-            // Note: Vercel might kill this immediately after return, but `fetch` is usually reliable enough if awaited closely.
-            // We use a short timeout ensures we don't hang if the spawning logic stalls.
+            // Spawn next run asynchronously
             try {
-                // We MUST await this to ensure the request is actually sent before the lambda freezes.
-                // But we don't care about the response body.
                 await fetch(selfUrl, {
                     method: 'GET',
                     headers: { 'CRON_SECRET': secret }
