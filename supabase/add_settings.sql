@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert default mining mode (NORMAL)
+-- Insert default mining mode (TURBO)
 INSERT INTO settings (key, value)
-VALUES ('mining_mode', '"NORMAL"')
+VALUES ('mining_mode', '"TURBO"')
 ON CONFLICT (key) DO NOTHING;

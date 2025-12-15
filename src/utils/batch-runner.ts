@@ -17,7 +17,20 @@ export async function runMiningBatch() {
         .eq('key', 'mining_mode')
         .maybeSingle();
     
-    const isTurboMode = (setting as any)?.value === 'TURBO';
+    // JSONB 값 파싱 (getMiningMode와 동일한 로직)
+    let mode: 'NORMAL' | 'TURBO' = 'TURBO'; // 기본값은 TURBO
+    if (setting) {
+        const rawValue = (setting as any)?.value;
+        if (typeof rawValue === 'string') {
+            mode = rawValue.replace(/^"|"$/g, '').toUpperCase() as 'NORMAL' | 'TURBO';
+        } else {
+            mode = String(rawValue).toUpperCase() as 'NORMAL' | 'TURBO';
+        }
+        if (mode !== 'NORMAL' && mode !== 'TURBO') {
+            mode = 'TURBO'; // 기본값은 TURBO
+        }
+    }
+    const isTurboMode = mode === 'TURBO';
     
     // 터보모드: API 키 최대 활용 (검색광고 API 4개=10000호출, 문서수 API 9개)
     // 일반 모드: 안정적인 수집 (5분마다 GitHub Actions)

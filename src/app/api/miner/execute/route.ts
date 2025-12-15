@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
             .single();
 
         // JSONB 값 파싱 (getMiningMode와 동일한 로직)
-        let mode: 'NORMAL' | 'TURBO' = 'NORMAL';
+        let mode: 'NORMAL' | 'TURBO' = 'TURBO';
         if (setting) {
             const rawValue = (setting as any)?.value;
             if (typeof rawValue === 'string') {
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
                 mode = String(rawValue).toUpperCase() as 'NORMAL' | 'TURBO';
             }
             if (mode !== 'NORMAL' && mode !== 'TURBO') {
-                mode = 'NORMAL';
+                mode = 'TURBO';
             }
         }
 

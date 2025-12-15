@@ -50,7 +50,7 @@ export async function getMiningMode() {
         }
 
         // JSONB 값 처리: Supabase가 자동으로 파싱하지만, 문자열로 저장된 경우도 처리
-        let mode: 'NORMAL' | 'TURBO' = 'NORMAL';
+        let mode: 'NORMAL' | 'TURBO' = 'TURBO';
         
         if (data) {
             const rawValue = (data as any)?.value;
@@ -66,8 +66,8 @@ export async function getMiningMode() {
             
             // 유효성 검사
             if (mode !== 'NORMAL' && mode !== 'TURBO') {
-                console.warn('[getMiningMode] Invalid mode value:', mode, 'defaulting to NORMAL');
-                mode = 'NORMAL';
+                console.warn('[getMiningMode] Invalid mode value:', mode, 'defaulting to TURBO');
+                mode = 'TURBO';
             }
         }
 
@@ -75,6 +75,6 @@ export async function getMiningMode() {
         return { success: true, mode };
     } catch (e: any) {
         console.error('[getMiningMode] Error:', e);
-        return { success: false, mode: 'NORMAL' as const, error: e.message };
+        return { success: false, mode: 'TURBO' as const, error: e.message };
     }
 }
