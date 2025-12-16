@@ -13,7 +13,7 @@ jobs:
     concurrency:
       # Shared group so expand/fill_docs won't overlap and thrash API/db.
       group: miner-cron
-      cancel-in-progress: true
+      cancel-in-progress: false
 
     steps:
       - name: Trigger Miner API (fill_docs)
@@ -28,14 +28,17 @@ jobs:
           START_TIME=$(date +%s)
           echo "📄 Starting fill_docs at $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
 
-          RUN_FOR_SECONDS=180
-          INTERVAL_SECONDS=20
+          # Goal: ~50k keywords/day with 4 doc-count calls per keyword (blog/cafe/web/news)
+          # keywords/day ~= (RUN_FOR_SECONDS/INTERVAL_SECONDS) * fillBatch * 288
+          # Search calls/day ~= keywords/day * 4  (must stay <= 9*25k = 225k)
+          RUN_FOR_SECONDS=120
+          INTERVAL_SECONDS=30
           END_TIME=$((START_TIME + RUN_FOR_SECONDS))
 
-          # Safe defaults (within Vercel 60s):
-          # - fillBatch=20 => ~80 Search API calls (4 endpoints per keyword)
+          # Target keywords/day: (120/30=4 calls/run) * 44 * 288 ~= 50,688
+          # Target Search calls/day: 50,688 * 4 ~= 202,752  (within 225,000)
           # - fillConcurrency=8 => up to 32 concurrent HTTP calls (because each keyword runs 4 in parallel)
-          QUERY="task=fill_docs&fillBatch=20&fillConcurrency=8&maxRunMs=55000"
+          QUERY="task=fill_docs&fillBatch=44&fillConcurrency=8&maxRunMs=55000"
 
           TOTAL_OK=0
           TOTAL_FAIL=0

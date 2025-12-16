@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 8 # 5분 크론 내에서 루프 호출로 처리량 극대화
     concurrency:
       group: miner-cron
-      cancel-in-progress: true
+      cancel-in-progress: false
     
     steps:
       - name: Trigger Miner API
@@ -32,17 +32,18 @@ jobs:
           # - GitHub schedule minimum is 5 minutes.
           # - Inside each run, repeatedly call the miner API for ~3 minutes to maximize daily throughput.
           # - Keep each API call within Vercel 60s by using smaller batches + controlled concurrency.
-          RUN_FOR_SECONDS=180
-          INTERVAL_SECONDS=20
+          # Goal: ~50k Ad API calls/day (seed requests) while reducing GitHub/Vercel overhead.
+          # calls/day ~= (RUN_FOR_SECONDS/INTERVAL_SECONDS) * 288
+          RUN_FOR_SECONDS=120
+          INTERVAL_SECONDS=30
           END_TIME=$((START_TIME + RUN_FOR_SECONDS))
 
-          # Tuning knobs (safe defaults) for MAX Related Keywords (Ad API):
-          # - expandBatch=32 => ~32 Ad API calls per miner execution (1 call per seed)
+          # Tuning knobs for Related Keywords (Ad API):
+          # - expandBatch=44 => ~44 Ad API calls per miner execution (1 call per seed)
           # - expandConcurrency=4 => match 4 Ad keys
           # - minSearchVolume=0 => don't block by volume; maximize throughput
-          # Target Ad calls/day (upper bound): (180/20=9 calls/run) * 32 * 288 ~= 82,944
-          # If you want to push closer to 100k/day, try expandBatch=38~40 (watch 60s timeout/429).
-          QUERY="task=expand&expandBatch=32&expandConcurrency=4&minSearchVolume=0&maxRunMs=55000"
+          # Target Ad calls/day (upper bound): (120/30=4 calls/run) * 44 * 288 ~= 50,688
+          QUERY="task=expand&expandBatch=44&expandConcurrency=4&minSearchVolume=0&maxRunMs=55000"
 
           TOTAL_OK=0
           TOTAL_FAIL=0
