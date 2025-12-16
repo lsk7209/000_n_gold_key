@@ -47,6 +47,8 @@ export default async function MonitorPage() {
     const adKeyStatus = keyManager.getStatusSummary('AD');
     const searchKeyStatus = keyManager.getStatusSummary('SEARCH');
     let pendingDocs = 0;
+    let newKeywords24h = 0;
+    let docsFilled24h = 0;
 
     try {
         // Use Service Role Key if available, otherwise fallback to Anon Key
@@ -56,12 +58,15 @@ export default async function MonitorPage() {
         const adminDb = createClient(supabaseUrl, supabaseKey);
 
         // 1. Fetch Stats in parallel
+        const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const [
             { count: totalCount },
             { count: analyzedCount },
             { count: expandedCount },
             { count: platinumCountResult },
             { count: goldCountResult },
+            { count: newKeywords24hCount },
+            { count: docsFilled24hCount },
             { data: logs }
         ] = await Promise.all([
             adminDb.from('keywords').select('*', { count: 'exact', head: true }),
@@ -69,6 +74,8 @@ export default async function MonitorPage() {
             adminDb.from('keywords').select('*', { count: 'exact', head: true }).eq('is_expanded', true),
             adminDb.from('keywords').select('*', { count: 'exact', head: true }).eq('tier', 'PLATINUM'),
             adminDb.from('keywords').select('*', { count: 'exact', head: true }).eq('tier', 'GOLD'),
+            adminDb.from('keywords').select('*', { count: 'exact', head: true }).gte('created_at', since24h),
+            adminDb.from('keywords').select('*', { count: 'exact', head: true }).not('total_doc_cnt', 'is', null).gte('updated_at', since24h),
             adminDb.from('keywords').select('*').order('created_at', { ascending: false }).limit(10)
         ]);
 
@@ -77,6 +84,8 @@ export default async function MonitorPage() {
         expanded = expandedCount || 0;
         platinumCount = platinumCountResult || 0;
         goldCount = goldCountResult || 0;
+        newKeywords24h = newKeywords24hCount || 0;
+        docsFilled24h = docsFilled24hCount || 0;
         recentLogs = logs || [];
         pendingDocs = Math.max(total - analyzed, 0);
 
@@ -132,6 +141,20 @@ export default async function MonitorPage() {
                         value={total.toLocaleString()}
                         icon={<Database className="w-5 h-5" />}
                         desc="수집된 전체 키워드"
+                    />
+                    <StatCard
+                        title="최근 24시간 키워드"
+                        value={newKeywords24h.toLocaleString()}
+                        icon={<TrendingUp className="w-5 h-5" />}
+                        desc="새로 수집된 키워드(24h)"
+                        color="emerald"
+                    />
+                    <StatCard
+                        title="최근 24시간 문서수"
+                        value={docsFilled24h.toLocaleString()}
+                        icon={<Search className="w-5 h-5" />}
+                        desc="문서수 분석 완료(24h)"
+                        color="blue"
                     />
                     <StatCard
                         title="분석 완료"
