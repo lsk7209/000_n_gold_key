@@ -1,0 +1,88 @@
+name: Keyword Document Count Cron
+
+on:
+  schedule:
+    # Offset by 2 minutes to reduce collision with miner.yml (expand).
+    - cron: '2-59/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  fill_docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    concurrency:
+      # Shared group so expand/fill_docs won't overlap and thrash API/db.
+      group: miner-cron
+      cancel-in-progress: true
+
+    steps:
+      - name: Trigger Miner API (fill_docs)
+        run: |
+          set -e
+
+          if [ -z "${{ secrets.PROD_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "❌ ERROR: PROD_URL or CRON_SECRET is not set in GitHub Secrets."
+            exit 1
+          fi
+
+          START_TIME=$(date +%s)
+          echo "📄 Starting fill_docs at $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+
+          RUN_FOR_SECONDS=180
+          INTERVAL_SECONDS=20
+          END_TIME=$((START_TIME + RUN_FOR_SECONDS))
+
+          # Safe defaults (within Vercel 60s):
+          # - fillBatch=20 => ~80 Search API calls (4 endpoints per keyword)
+          # - fillConcurrency=8 => up to 32 concurrent HTTP calls (because each keyword runs 4 in parallel)
+          QUERY="task=fill_docs&fillBatch=20&fillConcurrency=8&maxRunMs=55000"
+
+          TOTAL_OK=0
+          TOTAL_FAIL=0
+
+          while [ $(date +%s) -lt $END_TIME ]; do
+            echo "📡 Calling miner: ${{ secrets.PROD_URL }}/api/miner/execute?$QUERY"
+
+            MAX_RETRIES=2
+            RETRY_COUNT=0
+            SUCCESS=false
+
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
+              RESPONSE=$(curl -X GET "${{ secrets.PROD_URL }}/api/miner/execute?$QUERY" \
+                -H "CRON_SECRET: ${{ secrets.CRON_SECRET }}" \
+                -w "\n%{http_code}" \
+                --max-time 75 \
+                --silent \
+                --show-error) || true
+
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              BODY=$(echo "$RESPONSE" | sed '$d')
+
+              if [ "$HTTP_CODE" = "200" ]; then
+                SUCCESS=true
+                TOTAL_OK=$((TOTAL_OK + 1))
+                echo "✅ HTTP $HTTP_CODE"
+                echo "$BODY" | jq '.' || echo "$BODY"
+              else
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                echo "⚠️  HTTP $HTTP_CODE (retry $RETRY_COUNT/$MAX_RETRIES)"
+                echo "Response: $BODY"
+                sleep $((RETRY_COUNT * 3))
+              fi
+            done
+
+            if [ "$SUCCESS" = "false" ]; then
+              TOTAL_FAIL=$((TOTAL_FAIL + 1))
+              echo "❌ Call failed after retries"
+            fi
+
+            sleep $INTERVAL_SECONDS
+          done
+
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          echo "📈 Loop summary: OK=$TOTAL_OK FAIL=$TOTAL_FAIL"
+          echo "⏱️  Total execution time: ${DURATION} seconds"
+          echo "🎉 fill_docs completed"
+
+
